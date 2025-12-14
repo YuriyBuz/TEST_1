@@ -357,25 +357,22 @@
             return text;
         }
 
-        // 2. Generate ERRORS ONLY Report for EMAIL LINK (To keep URL short)
-        function generateErrorsOnlyReport() {
-            let text = `ЗВІТ ПОМИЛОК\n${userName}\n${new Date().toLocaleString('uk-UA')}\nРез: ${score}/${questions.length}\n`;
+        // 2. Generate COMPACT ERRORS REPORT for EMAIL LINK
+        // This makes the URL much shorter because we remove full text of questions.
+        function generateCompactErrorReport() {
+            let text = `ПІБ: ${userName}\nРез: ${score}/${questions.length}\n`;
             
             let errorCount = 0;
             userLog.forEach((log, index) => {
                 if (!log.isCorrect) {
                     errorCount++;
-                    const q = questions[log.qIndex];
-                    // Very short format for API URL safety
-                    const qShort = q.q.length > 20 ? q.q.substring(0, 20) + "..." : q.q;
-                    const aShort = q.a[log.userAnswerIndex].length > 15 ? q.a[log.userAnswerIndex].substring(0, 15) + "..." : q.a[log.userAnswerIndex];
-                    text += `\n❌ ${index + 1}. ${qShort} -> ${aShort}`;
+                    // Only Question Index and Short Answer to save space
+                    const aShort = questions[log.qIndex].a[log.userAnswerIndex].substring(0, 15);
+                    text += `\nX Пит.${index + 1}: ${aShort}...`;
                 }
             });
 
-            if (errorCount === 0) {
-                text += "\n🎉 Всі відповіді вірні!";
-            }
+            if (errorCount === 0) text += "Все вірно!";
             return text;
         }
 
@@ -423,7 +420,7 @@
                 msgResult.innerText = `Необхідний мінімум: 24 правильні відповіді. У вас ${score}. Повторіть стандарти FSSC 22000.`;
             }
 
-            // 1. Display FULL QR on screen
+            // 1. Display FULL QR on screen (Detailed)
             const fullReport = generateFullReport();
             const qrcodeContainer = document.getElementById("qrcode");
             qrcodeContainer.innerHTML = "";
@@ -441,10 +438,10 @@
                 qrcodeContainer.innerText = "Помилка генерації QR.";
             }
 
-            // 2. Generate SHORT LINK for Email (Errors only)
-            const errorsReport = generateErrorsOnlyReport();
-            // Encode safely for URL
-            const qrApiUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&charset-source=UTF-8&data=${encodeURIComponent(errorsReport)}`;
+            // 2. Generate COMPACT LINK for Email (To fit in URL)
+            // Using the compact report function
+            const compactReport = generateCompactErrorReport();
+            const qrApiUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&charset-source=UTF-8&data=${encodeURIComponent(compactReport)}`;
 
             // 3. Prepare Email Body
             const emailBody = generateEmailBody(passed, percentage, qrApiUrl);

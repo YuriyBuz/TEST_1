@@ -4,7 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Тест: Паспорт Якості (FSSC 22000 v6)</title>
+    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- QR Code Library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <style>
         :root {
             --bg-color: #f8fafc;
@@ -21,11 +24,11 @@
         .option-btn.selected { border-color: var(--primary); background-color: #d1fae5; font-weight: bold; }
         .hidden { display: none !important; }
         
-        /* Styles for Review Section */
-        .review-item { border-bottom: 1px solid #e2e8f0; padding-bottom: 1rem; margin-bottom: 1rem; }
-        .review-correct { color: var(--primary); font-weight: bold; }
-        .review-wrong { color: var(--danger); font-weight: bold; text-decoration: line-through; }
-        .review-correction { color: var(--primary); font-weight: bold; margin-left: 0.5rem; }
+        #qrcode img {
+            margin: 0 auto;
+            border: 4px solid white;
+            border-radius: 8px;
+        }
     </style>
 </head>
 <body class="bg-slate-50 min-h-screen">
@@ -95,15 +98,17 @@
 
                 <p id="msg-result" class="text-lg mb-6 px-4"></p>
 
+                <!-- QR Code Container -->
+                <div class="mb-6">
+                    <p class="text-sm text-slate-500 mb-2">QR-код з деталями для керівника:</p>
+                    <div id="qrcode" class="flex justify-center"></div>
+                </div>
+
                 <div class="space-y-3">
                     <a id="email-btn" href="#" class="block w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 rounded-xl shadow-lg transition">
-                        📧 Надіслати результат (Email)
+                        📧 Надіслати звіт + QR (Email)
                     </a>
                     
-                    <button onclick="copyReport()" class="block w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl shadow-lg transition">
-                        📋 Копіювати звіт (для Viber/Telegram)
-                    </button>
-
                     <button onclick="location.reload()" class="block w-full text-slate-400 text-sm underline pt-2">
                         Пройти ще раз
                     </button>
@@ -252,20 +257,19 @@
         let currentQIndex = 0;
         let score = 0;
         let userName = "";
-        let userLog = []; // Stores details: {qIndex, userAnswerIndex, isCorrect}
+        let userLog = []; 
 
         // REFS
         const stepLogin = document.getElementById('step-login');
         const stepQuiz = document.getElementById('step-quiz');
         const stepResult = document.getElementById('step-result');
-        
         const nameInput = document.getElementById('employeeName');
         const qText = document.getElementById('question-text');
         const optContainer = document.getElementById('options-container');
         const nextBtn = document.getElementById('next-btn');
+        const progressBar = document.getElementById('progress-bar');
         const qCurrentSpan = document.getElementById('q-current');
         const qTotalSpan = document.getElementById('q-total');
-        const progressBar = document.getElementById('progress-bar');
 
         // FUNCTIONS
         function startTest() {
@@ -285,7 +289,6 @@
             qCurrentSpan.innerText = currentQIndex + 1;
             qTotalSpan.innerText = questions.length;
             
-            // Update progress
             const pct = ((currentQIndex) / questions.length) * 100;
             progressBar.style.width = `${pct}%`;
 
@@ -325,7 +328,6 @@
             
             if (isCorrect) score++;
 
-            // Save details for report
             userLog.push({
                 qIndex: currentQIndex,
                 userAnswerIndex: selectedOptionIndex,
@@ -341,22 +343,32 @@
             }
         }
 
-        function generateReportText(passed, percentage) {
-             let bodyText = `ЗВІТ ТЕСТУВАННЯ (FSSC 22000 v6)\n`;
+        // Generate Detailed Report text for QR Code and Email Link
+        function generateDetailedReport() {
+            let text = `ЗВІТ (ДЕТАЛІЗАЦІЯ)\n${userName}\n${new Date().toLocaleString('uk-UA')}\nРез: ${score}/${questions.length}\n\n`;
+            
+            userLog.forEach((log, index) => {
+                const q = questions[log.qIndex];
+                const mark = log.isCorrect ? "✅" : "❌";
+                // Shorten text for URL safety and QR readability
+                const qShort = q.q.length > 30 ? q.q.substring(0, 30) + "..." : q.q;
+                const aShort = q.a[log.userAnswerIndex].length > 20 ? q.a[log.userAnswerIndex].substring(0, 20) + "..." : q.a[log.userAnswerIndex];
+                
+                text += `${index + 1}. ${mark} ${qShort} -> ${aShort}\n`;
+            });
+            return text;
+        }
+
+        // Generate Short Report for Email Body
+        function generateShortReport(passed, percentage, qrLink) {
+             let bodyText = `ЗВІТ ТЕСТУВАННЯ (FSSC 22000)\n`;
             bodyText += `Працівник: ${userName}\n`;
             bodyText += `Дата: ${new Date().toLocaleString('uk-UA')}\n`;
             bodyText += `Результат: ${score} з 26 (${percentage}%)\n`;
             bodyText += `Статус: ${passed ? '✅ СКЛАДЕНО (БОНУС)' : '❌ НЕ СКЛАДЕНО'}\n`;
             bodyText += `--------------------------------\n`;
-            bodyText += `ДЕТАЛІЗАЦІЯ ВІДПОВІДЕЙ:\n\n`;
-
-            userLog.forEach((log, index) => {
-                const q = questions[log.qIndex];
-                const answer = q.a[log.userAnswerIndex];
-                const mark = log.isCorrect ? "✅" : "❌";
-                bodyText += `${index + 1}. ${mark} ${q.q}\n`;
-                bodyText += `   Відповідь: ${answer}\n\n`;
-            });
+            bodyText += `ДЕТАЛІЗАЦІЯ (натисніть посилання для перегляду QR-коду з помилками):\n`;
+            bodyText += `${qrLink}\n`;
             
             return bodyText;
         }
@@ -376,7 +388,6 @@
             const percentage = Math.round((score / questions.length) * 100);
             percentageVal.innerText = `${percentage}% успіху`;
 
-            // Threshold: 24 out of 26 is ~92%. 23 is ~88%. User asked for 90% logic, so 24 is safe.
             const passed = score >= 24;
 
             if (passed) {
@@ -391,30 +402,38 @@
                 msgResult.innerText = `Необхідний мінімум: 24 правильні відповіді. У вас ${score}. Повторіть стандарти FSSC 22000.`;
             }
 
-            // Prepare Report Text
-            const reportText = generateReportText(passed, percentage);
+            // 1. Generate text details
+            const detailedInfo = generateDetailedReport();
+            
+            // 2. Display QR on screen (using local lib)
+            const qrcodeContainer = document.getElementById("qrcode");
+            qrcodeContainer.innerHTML = "";
+            try {
+                new QRCode(qrcodeContainer, {
+                    text: detailedInfo,
+                    width: 200,
+                    height: 200,
+                    colorDark : "#000000",
+                    colorLight : "#ffffff",
+                    correctLevel : QRCode.CorrectLevel.L
+                });
+            } catch(e) {
+                console.error("QR gen error:", e);
+                qrcodeContainer.innerText = "Помилка генерації QR.";
+            }
+
+            // 3. Generate Public Link for Email (using API because mailto can't attach images)
+            // Using API: qrserver.com
+            const qrApiUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&charset-source=UTF-8&data=${encodeURIComponent(detailedInfo)}`;
+
+            // 4. Prepare Short Report with Link
+            const shortReportText = generateShortReport(passed, percentage, qrApiUrl);
 
             // Setup Email Button
             const recipients = 'Dyndarnastia@gmail.com,Buznitskiy7@gmail.com';
             const subject = encodeURIComponent(`Результат тесту FSSC 22000: ${userName}`);
             
-            // Mailto limits are roughly 2000 chars. 26 questions might exceed this.
-            // We will try to pass it, but the "Copy" button is the backup.
-            emailBtn.href = `mailto:${recipients}?subject=${subject}&body=${encodeURIComponent(reportText)}`;
-
-            // Expose report text for copy function
-            window.currentReportText = reportText;
-        }
-
-        function copyReport() {
-            if (!window.currentReportText) return;
-            
-            navigator.clipboard.writeText(window.currentReportText).then(() => {
-                alert("Звіт скопійовано в буфер обміну! Тепер ви можете вставити його у Viber, Telegram або пошту.");
-            }).catch(err => {
-                console.error('Failed to copy: ', err);
-                alert("Не вдалося скопіювати автоматично. Будь ласка, використайте кнопку Email.");
-            });
+            emailBtn.href = `mailto:${recipients}?subject=${subject}&body=${encodeURIComponent(shortReportText)}`;
         }
     </script>
 </body>

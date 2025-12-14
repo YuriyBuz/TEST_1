@@ -100,13 +100,13 @@
 
                 <!-- QR Code Container -->
                 <div class="mb-6">
-                    <p class="text-sm text-slate-500 mb-2">QR-код з деталями для керівника:</p>
+                    <p class="text-sm text-slate-500 mb-2">QR-код з деталями для керівника (на екрані):</p>
                     <div id="qrcode" class="flex justify-center"></div>
                 </div>
 
                 <div class="space-y-3">
                     <a id="email-btn" href="#" class="block w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 rounded-xl shadow-lg transition">
-                        📧 Надіслати звіт + QR (Email)
+                        📧 Надіслати звіт (Email)
                     </a>
                     
                     <button onclick="location.reload()" class="block w-full text-slate-400 text-sm underline pt-2">
@@ -343,32 +343,53 @@
             }
         }
 
-        // Generate Detailed Report text for QR Code and Email Link
-        function generateDetailedReport() {
+        // 1. Generate FULL Detailed Report for SCREEN QR (Local JS handles this fine)
+        function generateFullReport() {
             let text = `ЗВІТ (ДЕТАЛІЗАЦІЯ)\n${userName}\n${new Date().toLocaleString('uk-UA')}\nРез: ${score}/${questions.length}\n\n`;
             
             userLog.forEach((log, index) => {
                 const q = questions[log.qIndex];
                 const mark = log.isCorrect ? "✅" : "❌";
-                // Shorten text for URL safety and QR readability
                 const qShort = q.q.length > 30 ? q.q.substring(0, 30) + "..." : q.q;
                 const aShort = q.a[log.userAnswerIndex].length > 20 ? q.a[log.userAnswerIndex].substring(0, 20) + "..." : q.a[log.userAnswerIndex];
-                
                 text += `${index + 1}. ${mark} ${qShort} -> ${aShort}\n`;
             });
             return text;
         }
 
-        // Generate Short Report for Email Body
-        function generateShortReport(passed, percentage, qrLink) {
+        // 2. Generate ERRORS ONLY Report for EMAIL LINK (To keep URL short)
+        function generateErrorsOnlyReport() {
+            let text = `ЗВІТ ПОМИЛОК\n${userName}\n${new Date().toLocaleString('uk-UA')}\nРез: ${score}/${questions.length}\n`;
+            
+            let errorCount = 0;
+            userLog.forEach((log, index) => {
+                if (!log.isCorrect) {
+                    errorCount++;
+                    const q = questions[log.qIndex];
+                    // Very short format for API URL safety
+                    const qShort = q.q.length > 20 ? q.q.substring(0, 20) + "..." : q.q;
+                    const aShort = q.a[log.userAnswerIndex].length > 15 ? q.a[log.userAnswerIndex].substring(0, 15) + "..." : q.a[log.userAnswerIndex];
+                    text += `\n❌ ${index + 1}. ${qShort} -> ${aShort}`;
+                }
+            });
+
+            if (errorCount === 0) {
+                text += "\n🎉 Всі відповіді вірні!";
+            }
+            return text;
+        }
+
+        // Generate Email Body
+        function generateEmailBody(passed, percentage, qrLink) {
              let bodyText = `ЗВІТ ТЕСТУВАННЯ (FSSC 22000)\n`;
             bodyText += `Працівник: ${userName}\n`;
             bodyText += `Дата: ${new Date().toLocaleString('uk-UA')}\n`;
             bodyText += `Результат: ${score} з 26 (${percentage}%)\n`;
             bodyText += `Статус: ${passed ? '✅ СКЛАДЕНО (БОНУС)' : '❌ НЕ СКЛАДЕНО'}\n`;
             bodyText += `--------------------------------\n`;
-            bodyText += `ДЕТАЛІЗАЦІЯ (натисніть посилання для перегляду QR-коду з помилками):\n`;
+            bodyText += `ПОСИЛАННЯ НА ЗВІТ ПОМИЛОК (QR):\n`;
             bodyText += `${qrLink}\n`;
+            bodyText += `(Повний звіт також доступний на екрані працівника)`;
             
             return bodyText;
         }
@@ -402,15 +423,13 @@
                 msgResult.innerText = `Необхідний мінімум: 24 правильні відповіді. У вас ${score}. Повторіть стандарти FSSC 22000.`;
             }
 
-            // 1. Generate text details
-            const detailedInfo = generateDetailedReport();
-            
-            // 2. Display QR on screen (using local lib)
+            // 1. Display FULL QR on screen
+            const fullReport = generateFullReport();
             const qrcodeContainer = document.getElementById("qrcode");
             qrcodeContainer.innerHTML = "";
             try {
                 new QRCode(qrcodeContainer, {
-                    text: detailedInfo,
+                    text: fullReport,
                     width: 200,
                     height: 200,
                     colorDark : "#000000",
@@ -422,18 +441,19 @@
                 qrcodeContainer.innerText = "Помилка генерації QR.";
             }
 
-            // 3. Generate Public Link for Email (using API because mailto can't attach images)
-            // Using API: qrserver.com
-            const qrApiUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&charset-source=UTF-8&data=${encodeURIComponent(detailedInfo)}`;
+            // 2. Generate SHORT LINK for Email (Errors only)
+            const errorsReport = generateErrorsOnlyReport();
+            // Encode safely for URL
+            const qrApiUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&charset-source=UTF-8&data=${encodeURIComponent(errorsReport)}`;
 
-            // 4. Prepare Short Report with Link
-            const shortReportText = generateShortReport(passed, percentage, qrApiUrl);
+            // 3. Prepare Email Body
+            const emailBody = generateEmailBody(passed, percentage, qrApiUrl);
 
             // Setup Email Button
             const recipients = 'Dyndarnastia@gmail.com,Buznitskiy7@gmail.com';
             const subject = encodeURIComponent(`Результат тесту FSSC 22000: ${userName}`);
             
-            emailBtn.href = `mailto:${recipients}?subject=${subject}&body=${encodeURIComponent(shortReportText)}`;
+            emailBtn.href = `mailto:${recipients}?subject=${subject}&body=${encodeURIComponent(emailBody)}`;
         }
     </script>
 </body>

@@ -4,59 +4,66 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Тест: Паспорт Якості (FSSC 22000 v6)</title>
-    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- QR Code Library -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <style>
         :root {
             --bg-color: #f8fafc;
             --card-bg: #ffffff;
             --text-main: #1e293b;
-            --text-muted: #64748b;
-            --primary: #059669; /* Emerald 600 */
-            --danger: #dc2626; /* Red 600 */
+            --primary: #059669;
+            --danger: #dc2626;
         }
         body { background-color: var(--bg-color); color: var(--text-main); font-family: sans-serif; padding-bottom: 2rem; }
-        .card { background-color: var(--card-bg); box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); }
-        .option-btn { transition: all 0.2s; border: 2px solid #e2e8f0; }
-        .option-btn:hover { border-color: var(--primary); background-color: #f0fdf4; }
-        .option-btn.selected { border-color: var(--primary); background-color: #d1fae5; font-weight: bold; }
-        .hidden { display: none !important; }
+        .card { background-color: var(--card-bg); border: 1px solid #e2e8f0; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); }
         
-        #qrcode img {
-            margin: 0 auto;
-            border: 4px solid white;
-            border-radius: 8px;
-        }
+        .option-btn { transition: all 0.2s; border: 2px solid #e2e8f0; position: relative; }
+        .option-btn:not(.disabled):hover { border-color: var(--primary); background-color: #f0fdf4; }
+        
+        .option-btn.correct-choice { border-color: var(--primary) !important; background-color: #ecfdf5 !important; }
+        .option-btn.wrong-choice { border-color: var(--danger) !important; background-color: #fef2f2 !important; }
+        .option-btn.disabled { cursor: default; opacity: 0.7; }
+
+        .feedback-box { animation: slideUp 0.3s ease-out; }
+        @keyframes slideUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        
+        .hidden { display: none !important; }
+        .spinner { animation: rotate 2s linear infinite; width: 16px; height: 16px; }
+        @keyframes rotate { 100% { transform: rotate(360deg); } }
     </style>
 </head>
 <body class="bg-slate-50 min-h-screen">
 
-    <div class="container mx-auto max-w-2xl p-4">
+    <div class="container mx-auto max-w-2xl p-4 sm:p-6">
         
         <!-- Header -->
         <header class="text-center mb-6 pt-4">
-            <img src="https://foodline-production.com/wp-content/uploads/2021/10/3752781497_3752781497.webp" alt="Logo" class="w-24 h-auto mx-auto mb-4 rounded-lg">
-            <h1 class="text-3xl font-bold text-emerald-800">Паспорт Якості</h1>
-            <p class="text-slate-500 mt-2">Виробництво соусів | FSSC 22000 v6</p>
+            <img src="https://foodline-production.com/wp-content/uploads/2021/10/3752781497_3752781497.webp" alt="Foodline Logo" class="w-24 h-auto mx-auto mb-4 rounded-xl shadow-sm bg-white p-1">
+            <div class="flex items-center justify-center gap-2 mb-1">
+                <div id="statusDot" class="w-2 h-2 rounded-full bg-green-500"></div>
+                <span id="statusText" class="text-xs font-bold text-slate-500 uppercase tracking-widest">Онлайн</span>
+            </div>
+            <h1 class="text-2xl font-bold text-emerald-800">Паспорт Якості</h1>
+            <p class="text-slate-500 text-sm">Виробництво соусів | FSSC 22000 v6</p>
         </header>
 
-        <!-- Step 1: Login & Intro -->
+        <!-- Step 1: Login -->
         <div id="step-login" class="card p-6 rounded-2xl">
             <div class="bg-blue-50 border-l-4 border-blue-500 p-4 mb-6">
-                <h3 class="font-bold text-blue-800">Умови "Quality Bonus":</h3>
-                <p class="text-sm text-blue-700 mt-1">
-                    У тесті <strong>26 питань</strong> підвищеної складності.
-                    Прохідний бал: <strong>24 правильні відповіді</strong> (92%), 
-                    щоб отримати <strong>+5% до тарифу</strong>!
+                <h3 class="font-bold text-blue-800 text-sm">Інструкція:</h3>
+                <p class="text-xs text-blue-700 mt-1">
+                    У тесті <strong>26 питань</strong>. Після кожної відповіді з'являтиметься пояснення. 
+                    Результати автоматично заносяться до онлайн-таблиці.
+                    Прохідний бал: <strong>24/26</strong>.
                 </p>
             </div>
 
-            <label class="block text-sm font-bold mb-2">Прізвище та ім'я працівника:</label>
-            <input type="text" id="employeeName" placeholder="Наприклад: Іванов Петро" class="w-full p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 mb-6 text-lg">
+            <label class="block text-sm font-bold mb-2 text-slate-700">Оберіть ваше прізвище та ім'я:</label>
+            <select id="employeeSelect" class="w-full p-3 border border-gray-300 rounded-xl bg-white text-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 mb-6">
+                <option value="">-- Натисніть для вибору --</option>
+            </select>
             
-            <button onclick="startTest()" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 rounded-xl shadow-lg transition transform active:scale-95">
+            <button onclick="startTest()" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-4 rounded-xl shadow-lg transition transform active:scale-95">
                 РОЗПОЧАТИ ТЕСТ
             </button>
         </div>
@@ -64,21 +71,30 @@
         <!-- Step 2: Quiz -->
         <div id="step-quiz" class="hidden">
             <div class="flex justify-between items-center mb-4 px-2">
-                <span class="text-sm font-bold text-slate-500">Питання <span id="q-current">1</span> з <span id="q-total">26</span></span>
-                <div class="w-1/2 bg-gray-200 rounded-full h-2.5">
-                    <div id="progress-bar" class="bg-emerald-600 h-2.5 rounded-full" style="width: 0%"></div>
+                <span class="text-xs font-bold text-slate-400 uppercase">Питання <span id="q-current">1</span> / 26</span>
+                <div class="w-1/2 bg-gray-200 rounded-full h-2">
+                    <div id="progress-bar" class="bg-emerald-600 h-2 rounded-full transition-all duration-300" style="width: 0%"></div>
                 </div>
             </div>
 
-            <div class="card p-6 rounded-2xl min-h-[300px] flex flex-col justify-between">
+            <div class="card p-6 rounded-2xl min-h-[420px] flex flex-col justify-between">
                 <div>
-                    <h2 id="question-text" class="text-xl font-bold mb-6 text-slate-800 leading-snug"></h2>
-                    <div id="options-container" class="space-y-3">
-                        <!-- Options will be injected here -->
+                    <h2 id="question-text" class="text-xl font-bold mb-6 text-slate-800 leading-tight"></h2>
+                    <div id="options-container" class="space-y-3"></div>
+                    
+                    <!-- Explanation Block -->
+                    <div id="feedback-container" class="hidden mt-6 feedback-box">
+                        <div id="feedback-type" class="p-4 rounded-xl border-l-4">
+                            <div class="flex items-center mb-1">
+                                <span id="feedback-icon" class="mr-2"></span>
+                                <span id="feedback-title" class="font-bold"></span>
+                            </div>
+                            <p id="feedback-text" class="text-sm italic"></p>
+                        </div>
                     </div>
                 </div>
                 
-                <button id="next-btn" onclick="nextQuestion()" disabled class="mt-6 w-full bg-gray-300 text-gray-500 font-bold py-3 rounded-xl cursor-not-allowed transition">
+                <button id="next-btn" onclick="nextQuestion()" disabled class="mt-8 w-full bg-gray-300 text-gray-500 font-bold py-4 rounded-xl cursor-not-allowed transition">
                     Далі
                 </button>
             </div>
@@ -86,371 +102,423 @@
 
         <!-- Step 3: Results -->
         <div id="step-result" class="hidden text-center">
-            <div class="card p-8 rounded-2xl">
+            <div class="card p-8 rounded-3xl">
+                <div id="sync-indicator" class="mb-4 text-[10px] font-black uppercase tracking-tighter text-amber-500 flex items-center justify-center gap-2">
+                    <span>Синхронізація з таблицею...</span>
+                    <div class="spinner border-2 border-amber-500 border-t-transparent rounded-full"></div>
+                </div>
+
                 <div id="icon-result" class="text-6xl mb-4"></div>
-                <h2 id="title-result" class="text-3xl font-bold mb-2"></h2>
+                <h2 id="title-result" class="text-3xl font-bold mb-1"></h2>
                 
-                <div class="py-4 my-4 border-t border-b border-gray-100">
-                    <p class="text-slate-500 text-sm">Ваш результат:</p>
-                    <p class="text-4xl font-black text-slate-800"><span id="score-val">0</span> / 26</p>
-                    <p id="percentage-val" class="text-lg font-semibold mt-1"></p>
+                <div class="py-6 my-4 border-y border-slate-100">
+                    <p class="text-slate-400 text-xs uppercase font-bold tracking-widest mb-1">Ваш рахунок</p>
+                    <p class="text-5xl font-black text-slate-800"><span id="score-val">0</span> / 26</p>
+                    <p id="percentage-val" class="text-sm font-bold text-emerald-600 mt-2 bg-emerald-50 inline-block px-3 py-1 rounded-full"></p>
                 </div>
 
-                <p id="msg-result" class="text-lg mb-6 px-4"></p>
+                <p id="msg-result" class="text-base mb-8 px-4 text-slate-500 leading-relaxed"></p>
 
-                <!-- QR Code Container -->
-                <div class="mb-6">
-                    <p class="text-sm text-slate-500 mb-2">QR-код з деталями для керівника (на екрані):</p>
-                    <div id="qrcode" class="flex justify-center"></div>
+                <div class="mb-8 flex justify-center">
+                    <div id="qrcode" class="p-2 bg-white border rounded-xl min-w-[128px] min-h-[128px] flex items-center justify-center"></div>
                 </div>
 
-                <div class="space-y-3">
-                    <a id="email-btn" href="#" class="block w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 rounded-xl shadow-lg transition">
-                        📧 Надіслати звіт (Email)
-                    </a>
-                    
-                    <button onclick="location.reload()" class="block w-full text-slate-400 text-sm underline pt-2">
-                        Пройти ще раз
-                    </button>
-                </div>
+                <button onclick="location.reload()" class="w-full py-4 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold rounded-xl transition">
+                    Пройти ще раз
+                </button>
             </div>
         </div>
 
     </div>
 
     <script>
-        // DATA: Questions (FSSC 22000 v6, Sauce Production Context)
+        // === НАЛАШТУВАННЯ GOOGLE SCRIPT ===
+        // Вставте сюди посилання, яке отримаєте після "Розгортання" Apps Script
+        const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwnPy4KqALWoxYMxw0NXWEM6Npyc49FH_6MV2p9Nao_Gqc5a2pg8DU3EUTjn3VJeZSy/exec';
+        const OFFLINE_QUEUE_KEY = 'fssc_quality_offline_queue';
+
+        const employeesList = [
+            "Бойко Світлана Петрівна", "Бондаренко Валерій Валентинович", "Вискірко Руслана Михайлівна",
+            "Воробей Людмила Леонідівна", "Ворона Інна Василівна", "Ворожко Дарья Вячеславівна",
+            "Галагін Євгеній Ярославович", "Гончарук Ольга Михайлівна", "Гора Андрій Олександрович",
+            "Долинюк Олександр Миколайович", "Єрко Віктор Андрійович", "Загура Іван Борисович",
+            "Іванчук Олександр Анатолійович", "Кішка Сергій Володимирович", "Козурак Іван Миколайович",
+            "Козило Василь Вячеславович", "Кораблін Дмитро", "Корнієнко Жанна Василівна",
+            "Король Юрій Валерійович", "Кучера Галина Іванівна", "Лавриненко Максим Миколайович",
+            "Максімюк Анатолій Анатолійович", "Максімюк Анатолій Вікторович", "Марків Олександр Йосипович",
+            "Мозговий Олександр Сергійович", "Непорадна Олена Михайлівна", "Огаркова Марія Володимирівна",
+            "Попадюк Анжела Миколаївна", "Садиріна Ольга Анатоліївна", "Свінцов Михайло Генадійович",
+            "Снітко Ярослав Іванович", "Соботович Лілія Михайлівна", "Соботович Тетяна Михайлівна",
+            "Солдатова Ірина Володимирівна", "Сосновський Валерій Петрович", "Фалько Анатолій Олександрович",
+            "Фисина Наталія Григорівна", "Хакімов Олександр Михайлович", "Хлупянець Віталій Анатолійович",
+            "Христянович Віталій Едуардович", "Черніцький Назарій Вячеславович", "Шанчук Павло Сергійович",
+            "Шута Олександра Сергіївна"
+        ];
+
         const questions = [
             {
                 q: "Культура безпеки (FSSC 22000): Ви помітили, що колега не змінив рукавички після підняття предмета з підлоги. Ваші дії?",
                 a: ["Проігнорувати, щоб не сваритися", "Зробити зауваження колезі та повідомити майстра, якщо реакції немає", "Змінити рукавички за нього"],
-                correct: 1
+                correct: 1,
+                hint: "Культура безпеки базується на колективній відповідальності та негайному виправленні помилок."
             },
             {
                 q: "Критична контрольна точка: Під час пастеризації соусу температура впала нижче критичної межі (наприклад, нижче 90°C). Ваші дії?",
                 a: ["Збільшити пар і продовжити", "Зупинити процес, заблокувати продукт (карантин), повідомити технолога", "Записати в журнал, щоб не зупиняти лінію"],
-                correct: 1
+                correct: 1,
+                hint: "Порушення ККТ вимагає негайної зупинки та карантину всієї потенційно небезпечної партії."
             },
             {
                 q: "Алергени: Ви переходите з виробництва 'Гірчичного' соусу на 'Томатний'. Яка процедура є обов'язковою?",
                 a: ["Просто злити залишки гірчиці", "Провести повну санітарну мийку обладнання (CIP) з контролем якості миття", "Промивати водою 5 годин"],
-                correct: 1
+                correct: 1,
+                hint: "Гірчиця — сильний алерген. Тільки повна мийка запобігає ризику алергічної реакції у споживачів."
             },
             {
                 q: "Сторонні предмети: Ви виявили, що сито для просіювання пошкоджене (є дірка). Що робити з партією, яка пройшла через нього?",
                 a: ["Використати далі, дірка маленька", "Партію ізолювати як потенційно небезпечну, сито замінити", "Замінити сито, а продукт пустити у виробництво"],
-                correct: 1
+                correct: 1,
+                hint: "Пошкоджене обладнання створює ризик потрапляння сторонніх предметів у продукт."
             },
             {
                 q: "Скло на виробництві: У цеху приготування соусів розбилася скляна пляшка з інгредієнтом. Яка зона потенційного забруднення?",
                 a: ["Тільки місце падіння", "Радіус мінімум 3-5 метрів, вся відкрита продукція в цьому радіусі вважається браком", "Тільки підлога"],
-                correct: 1
+                correct: 1,
+                hint: "Скло розлітається на велику відстань, потрапляючи у відкриті ємності."
             },
             {
                 q: "Захист їжі: Ви бачите незнайому людину без супроводу біля ємностей з готовим продуктом. Ваші дії?",
                 a: ["Запитати 'Хто ви?' і супроводити до виходу і покликати Майстра зміни", "Пройти повз, мабуть це новий співробітник", "Привітатися і побажати хорошого дня"],
-                correct: 0
+                correct: 0,
+                hint: "Food Defense (Захист їжі) вимагає контролю доступу сторонніх до продукту."
             },
             {
-                q: "Шахрайство: На склад надійшла сировина (наприклад, паприка) без маркування та номеру партії. Чи можна її використовувати?",
+                q: "Шахрайство: На склад надійшла сировина (паприка) без маркування та номеру партії. Чи можна її використовувати?",
                 a: ["Так, якщо вона виглядає як паприка", "Ні, використання неідентифікованої сировини суворо заборонено", "Можна, якщо майстер дозволить"],
-                correct: 1
+                correct: 1,
+                hint: "Простежуваність — основа харчової безпеки. Без номера партії сировина нелегальна."
             },
             {
                 q: "Особиста гігієна: Чому заборонено використовувати лак для нігтів або накладні вії на виробництві соусів?",
-                a: ["Це некрасиво", "Це ризик потрапляння фізичного забруднення (шматочків лаку/вій) у готовий продукт", "Це відволікає від роботи"],
-                correct: 1
+                a: ["Це некрасиво", "Це ризик потрапляння фізичного забруднення у готовий продукт", "Це відволікає від роботи"],
+                correct: 1,
+                hint: "Частинки лаку або вії є фізичними сторонніми предметами в їжі."
             },
             {
                 q: "Миття рук: Після якої дії миття рук є критично обов'язковим?",
-                a: ["Після відвідування туалету, роботи з відходами, торкання до обличчя", "Тільки перед початком зміни", "Тільки якщо руки візуально брудні"],
-                correct: 0
+                a: ["Після туалету, роботи з відходами, торкання до обличчя чи підлоги", "Тільки перед початком зміни", "Тільки якщо руки візуально брудні"],
+                correct: 0,
+                hint: "Гігієна рук — найкращий спосіб боротьби з бактеріями."
             },
             {
                 q: "Перехресне забруднення: Чи можна використовувати відро для 'Санітарного браку' щоб перенести чисту воду?",
-                a: ["Так, якщо його помити", "Ні, інвентар повинен використовуватися суворо за кодуванням (кольором/маркуванням)", "Можна один раз"],
-                correct: 1
+                a: ["Так, якщо його помити", "Ні, інвентар повинен використовуватися суворо за кодуванням", "Можна один раз"],
+                correct: 1,
+                hint: "Кодування за кольорами виключає випадкове забруднення продукту."
             },
             {
-                q: "Здоров'я персоналу: У вас діарея, але немає температури. Чи можна виходити на зміну в цех приготування їжі?",
+                q: "Здоров'я персоналу: У вас діарея, але немає температури. Чи можна виходити на зміну?",
                 a: ["Так, якщо прийняти ліки", "Ні, необхідно повідомити керівника і не контактувати з продуктом", "Так, якщо часто мити руки"],
-                correct: 1
+                correct: 1,
+                hint: "Кишкові розлади є джерелом небезпечних патогенів."
             },
             {
-                q: "Ручна мийка (Заміна CIP): Ви миєте обладнання вручну. Чи дозволено використовувати металеві шкребки або кухонні губки?",
-                a: ["Так, вони краще відмивають пригар", "Ні, категорично заборонено (ризик потрапляння шматочків металу/губки в соус)", "Можна, якщо ніхто не бачить"],
-                correct: 1
+                q: "Ручна мийка: Чи дозволено використовувати металеві шкребки або побутові губки?",
+                a: ["Так, вони краще миють", "Ні, категорично заборонено (ризик потрапляння частинок у соус)", "Можна, якщо ніхто не бачить"],
+                correct: 1,
+                hint: "Тільки дозволений інвентар не створює ризику сторонніх включень."
             },
             {
-                q: "Тимчасовий ремонт: Чи дозволено використовувати скотч, дріт або картон для тимчасового кріплення труби на лінії розливу?",
-                a: ["Так, якщо це швидко", "Ні, використання матеріалів, що не миються і можуть потрапити в продукт, заборонено", "Так, до кінця зміни"],
-                correct: 1
+                q: "Тимчасовий ремонт: Чи дозволено використовувати скотч або дріт для фіксації труби на лінії?",
+                a: ["Так, якщо швидко", "Ні, використання негігієнічних матеріалів заборонено", "Так, до кінця зміни"],
+                correct: 1,
+                hint: "Скотч накопичує бактерії і може потрапити в продукт."
             },
             {
-                q: "Управління відходами: Як швидко потрібно видаляти виробничі відходи з зони приготування соусів?",
-                a: ["В кінці тижня", "Регулярно, не допускаючи переповнення, щоб уникнути перехресного забруднення", "В кінці зміни"],
-                correct: 1
+                q: "Управління відходами: Як швидко потрібно видаляти виробничі відходи з зони приготування?",
+                a: ["В кінці тижня", "Регулярно, не допускаючи переповнення баків", "В кінці зміни"],
+                correct: 1,
+                hint: "Відходи приваблюють шкідників та поширюють бактерії."
             },
             {
-                q: "Зберігання (FIFO/FEFO): Яку палету з томатною пастою ви візьмете першою?",
-                a: ["Ту, що стоїть ближче", "Ту, у якої раніше закінчується термін придатності", "Ту, яка новіша"],
-                correct: 1
+                q: "Зберігання: Яку палету ви візьмете першою за принципом FEFO?",
+                a: ["Ту, що стоїть найближче", "Ту, у якої раніше закінчується термін придатності", "Ту, яка надійшла останньою"],
+                correct: 1,
+                hint: "FEFO гарантує використання сировини до закінчення терміну."
             },
             {
-                q: "Хімічна безпека: Де повинні зберігатися миючі та дезінфікуючі засоби?",
-                a: ["На підлозі в цеху", "У закритій шафі/приміщенні з обмеженим доступом, окремо від продуктів", "Під робочим столом"],
-                correct: 1
+                q: "Хімічна безпека: Де повинні зберігатися миючі засоби?",
+                a: ["Біля лінії", "У закритій шафі окремо від продуктів", "Під робочим столом"],
+                correct: 1,
+                hint: "Хімія не повинна потрапити в їжу."
             },
             {
-                q: "Маркування (Дата/Партія): Ви перевіряєте етикетку. Який формат є єдино правильним згідно з нашим стандартом?",
-                a: ["00.00.0000 / Партія 0000", "Партія:0000, Дата вжити до: 00.00.0000", "Дата виготовлення: 00.00.0000, Дата вжити до: 00.00.0000"],
-                correct: 1
+                q: "Маркування: Який формат етикетки є правильним за стандартом?",
+                a: ["00.00.00 / Партія 00", "Партія:0000, Дата вжити до: 00.00.0000", "Просто дата виготовлення"],
+                correct: 1,
+                hint: "Чітке маркування дозволяє відстежити кожну партію товару."
             },
             {
-                q: "Контроль сторонніх предметів (без металодетектора): Ви помітили, що пластикова лопатка трошки надщерблена. Ваші дії?",
-                a: ["Працювати далі, шматок малий", "Зупинити роботу, повідомити майстра, заблокувати продукцію (ризик фізичного забруднення)", "Спробувати знайти шматок в чані"],
-                correct: 1
+                q: "Контроль предметів: Ви помітили, що лопатка надщерблена. Ваші дії?",
+                a: ["Працювати далі", "Зупинити роботу, ізолювати продукцію, повідомити майстра", "Знайти шматок"],
+                correct: 1,
+                hint: "Будь-яка відсутня частина інструменту — це загроза для споживача."
             },
             {
-                q: "Вода: Чи можна використовувати не підготовлену воду для ополіскування обладнання всередині?",
-                a: ["Так, якщо потім просушити", "Ні, тільки воду підготовлену після ХВО", "Можна, якщо це не фінальне ополіскування"],
-                correct: 1
+                q: "Вода: Можна використовувати водопровідну воду для фінального ополіскування котлів?",
+                a: ["Так", "Ні, тільки підготовлену воду належної якості", "Можна гарячу"],
+                correct: 1,
+                hint: "Вода для контакту з продуктом має бути мікробіологічно чистою."
             },
             {
-                q: "Відвідувачі: У цех заходить підрядник ремонтувати світло. Чи повинен він заповнювати анкету здоров'я?",
-                a: ["Ні, він не торкається продуктів", "Так, правила FSSC стосуються всіх відвідувачів", "Тільки якщо він перший раз"],
-                correct: 1
+                q: "Відвідувачі: Чи повинен сервісний інженер заповнювати анкету здоров'я?",
+                a: ["Ні", "Так, правила стосуються всіх відвідувачів", "Тільки якщо він у чистій зоні"],
+                correct: 1,
+                hint: "Всі присутні в цеху є потенційними джерелами забруднення."
             },
             {
-                q: "Простежуваність: Ви змішали два залишки однієї спеції з різними номерами партій в одну ємність. Це правильно?",
-                a: ["Так, економимо місце", "Ні, втрачається простежуваність партії. Потрібно фіксувати змішування або зберігати окремо", "Так, якщо спеція однакова"],
-                correct: 1
+                q: "Простежуваність: Чи можна змішувати залишки різних партій спецій в одній ємності?",
+                a: ["Так", "Ні, це руйнує простежуваність", "Так, якщо спеція однакова"],
+                correct: 1,
+                hint: "Це не дозволить визначити джерело проблеми у разі відклику товару."
             },
             {
-                q: "Повторна переробка: Як маркувати соус, який йде на повторну переробку?",
-                a: ["Ніяк, ми його так додамо", "Чітке маркування: Назва, Дата, 'НА ПЕРЕВАРКУ'", "Просто написати номер завдання/партії"],
-                correct: 1
+                q: "Повторна переробка: Як маркується продукція 'Re-work'?",
+                a: ["Ніяк", "Назва, Дата, Маркування 'НА ПЕРЕРОБКУ'", "Просто дата"],
+                correct: 1,
+                hint: "Re-work має контролюватися суворіше за основну продукцію."
             },
             {
-                q: "Прибирання розливів: На підлогу розлилася олія. Чому це небезпечно крім ризику послизнутися?",
-                a: ["Це небезвечно для навколишнього середовища", "Олія важко змивається і є середовищем для розвитку бактерій та плісняви", "Це втрата грошей"],
-                correct: 1
+                q: "Прибирання: На підлогу розлилася олія. Чому це небезпечно для якості?",
+                a: ["Дорого прибирати", "Це середовище для розвитку бактерій (Лістерії)", "Це тільки ризик травми"],
+                correct: 1,
+                hint: "Залишки жиру та вологи — ідеальне місце для патогенів."
             },
             {
-                q: "Калібрування: Ви впустили вимірювальний придад на підлогу. Чи можна ним далі міряти?",
-                a: ["Так, якщо скло ціле", "Ні, він міг збитися. Його потрібно перевірити/калібрувати", "Так, якщо він вмикається"],
-                correct: 1
+                q: "Калібрування: Термометр впав на підлогу. Ваші дії?",
+                a: ["Міряти далі", "Замінити на повірений, цей відправити на перевірку", "Протерти серветкою"],
+                correct: 1,
+                hint: "Похибка приладу після удару може призвести до браку продукції."
             },
             {
-                q: "Вентиляція: Чому вікна/проеми в цеху, що відкриваються, повинні мати захисні сітки/штори?",
-                a: ["Щоб не втікали працівники", "Для запобігання потраплянню комах та шкідників", "Для краси"],
-                correct: 1
+                q: "Шкідники: Ви побачили муху в цеху. Що це означає?",
+                a: ["Це випадковість", "Це сигнал про порушення герметичності приміщення", "Треба відкрити вікно"],
+                correct: 1,
+                hint: "Комахи є переносниками небезпечних мікроорганізмів."
             },
             {
-                q: "Інфраструктура: Ви побачили плісняву на герметику біля мийки. Ваші дії?",
-                a: ["Змити водою", "Подати заявку на заміну герметика, це джерело забруднення", "Не звертати уваги"],
-                correct: 1
+                q: "Інфраструктура: Стеля почала лущитися над котлом. Ваші дії?",
+                a: ["Накрити котел, повідомити майстра", "Продовжити роботу", "Прибрати шматки ложкою"],
+                correct: 0,
+                hint: "Фарба є джерелом фізичного та хімічного забруднення."
             }
         ];
 
-        // STATE
         let currentQIndex = 0;
         let score = 0;
         let userName = "";
-        let userLog = []; 
+        let selectedOptionIndex = null;
+        let testLog = []; 
 
-        // REFS
-        const stepLogin = document.getElementById('step-login');
-        const stepQuiz = document.getElementById('step-quiz');
-        const stepResult = document.getElementById('step-result');
-        const nameInput = document.getElementById('employeeName');
-        const qText = document.getElementById('question-text');
-        const optContainer = document.getElementById('options-container');
-        const nextBtn = document.getElementById('next-btn');
-        const progressBar = document.getElementById('progress-bar');
-        const qCurrentSpan = document.getElementById('q-current');
-        const qTotalSpan = document.getElementById('q-total');
+        document.addEventListener('DOMContentLoaded', () => {
+            const select = document.getElementById('employeeSelect');
+            employeesList.sort().forEach(name => {
+                const opt = document.createElement('option');
+                opt.value = name;
+                opt.textContent = name;
+                select.appendChild(opt);
+            });
+            updateNetworkStatus();
+            window.addEventListener('online', () => { updateNetworkStatus(); processOfflineQueue(); });
+            window.addEventListener('offline', updateNetworkStatus);
+        });
 
-        // FUNCTIONS
         function startTest() {
-            const name = nameInput.value.trim();
-            if (!name) {
-                alert("Будь ласка, введіть своє Прізвище та Ім'я");
-                return;
-            }
-            userName = name;
-            stepLogin.classList.add('hidden');
-            stepQuiz.classList.remove('hidden');
+            userName = document.getElementById('employeeSelect').value;
+            if (!userName) { alert("Будь ласка, оберіть ПІБ"); return; }
+            document.getElementById('step-login').classList.add('hidden');
+            document.getElementById('step-quiz').classList.remove('hidden');
             renderQuestion();
         }
 
         function renderQuestion() {
             const q = questions[currentQIndex];
-            qCurrentSpan.innerText = currentQIndex + 1;
-            qTotalSpan.innerText = questions.length;
+            document.getElementById('q-current').innerText = currentQIndex + 1;
+            document.getElementById('progress-bar').style.width = `${((currentQIndex) / questions.length) * 100}%`;
+            document.getElementById('question-text').innerText = q.q;
+            document.getElementById('feedback-container').classList.add('hidden');
             
-            const pct = ((currentQIndex) / questions.length) * 100;
-            progressBar.style.width = `${pct}%`;
-
-            qText.innerText = q.q;
-            optContainer.innerHTML = '';
+            const container = document.getElementById('options-container');
+            container.innerHTML = '';
+            
+            const nextBtn = document.getElementById('next-btn');
             nextBtn.disabled = true;
-            nextBtn.classList.add('bg-gray-300', 'cursor-not-allowed');
-            nextBtn.classList.remove('bg-emerald-600', 'hover:bg-emerald-700', 'text-white');
-            nextBtn.innerText = currentQIndex === questions.length - 1 ? "Завершити тест" : "Далі";
+            nextBtn.className = "mt-8 w-full bg-gray-300 text-gray-500 font-bold py-4 rounded-xl cursor-not-allowed transition";
+            nextBtn.innerText = currentQIndex === questions.length - 1 ? "Завершити тест" : "Наступне питання";
 
-            q.a.forEach((optText, index) => {
+            q.a.forEach((opt, index) => {
                 const btn = document.createElement('button');
-                btn.className = 'option-btn w-full text-left p-4 rounded-xl text-lg mb-2 relative';
-                btn.innerText = optText;
-                btn.onclick = () => selectOption(index, btn);
-                optContainer.appendChild(btn);
+                btn.className = 'option-btn w-full text-left p-4 rounded-xl text-lg flex items-center mb-1';
+                btn.innerHTML = `<span class="w-8 h-8 rounded-full border-2 border-slate-200 flex items-center justify-center mr-3 text-xs font-bold text-slate-400">${String.fromCharCode(65 + index)}</span> ${opt}`;
+                btn.onclick = () => showFeedback(index, btn);
+                container.appendChild(btn);
             });
         }
 
-        let selectedOptionIndex = null;
-
-        function selectOption(index, btnElement) {
-            document.querySelectorAll('.option-btn').forEach(b => {
-                b.classList.remove('selected');
-                b.classList.remove('bg-emerald-100');
-            });
-            btnElement.classList.add('selected');
+        function showFeedback(index, btn) {
+            if (selectedOptionIndex !== null) return; 
+            
             selectedOptionIndex = index;
+            const q = questions[currentQIndex];
+            const isCorrect = (index === q.correct);
+            
+            if (isCorrect) {
+                score++;
+                btn.classList.add('correct-choice');
+                testLog.push(`✅`);
+                displayFeedbackBox(true, q.hint);
+            } else {
+                btn.classList.add('wrong-choice');
+                testLog.push(`❌`);
+                const allBtns = document.querySelectorAll('.option-btn');
+                allBtns[q.correct].classList.add('correct-choice');
+                displayFeedbackBox(false, q.hint);
+            }
+
+            document.querySelectorAll('.option-btn').forEach(b => b.classList.add('disabled'));
+            
+            const nextBtn = document.getElementById('next-btn');
             nextBtn.disabled = false;
-            nextBtn.classList.remove('bg-gray-300', 'cursor-not-allowed', 'text-gray-500');
-            nextBtn.classList.add('bg-emerald-600', 'hover:bg-emerald-700', 'text-white');
+            nextBtn.className = "mt-8 w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-4 rounded-xl shadow-lg transition";
+        }
+
+        function displayFeedbackBox(isCorrect, hint) {
+            const box = document.getElementById('feedback-container');
+            const type = document.getElementById('feedback-type');
+            const icon = document.getElementById('feedback-icon');
+            const title = document.getElementById('feedback-title');
+            const text = document.getElementById('feedback-text');
+
+            box.classList.remove('hidden');
+            text.innerText = hint;
+
+            if (isCorrect) {
+                type.className = "p-4 rounded-xl border-l-4 border-emerald-500 bg-emerald-50 text-emerald-800";
+                icon.innerHTML = "✅";
+                title.innerText = "Правильно!";
+            } else {
+                type.className = "p-4 rounded-xl border-l-4 border-red-500 bg-red-50 text-red-800";
+                icon.innerHTML = "❌";
+                title.innerText = "Не зовсім...";
+            }
         }
 
         function nextQuestion() {
-            const correctIndex = questions[currentQIndex].correct;
-            const isCorrect = (selectedOptionIndex === correctIndex);
-            
-            if (isCorrect) score++;
-
-            userLog.push({
-                qIndex: currentQIndex,
-                userAnswerIndex: selectedOptionIndex,
-                isCorrect: isCorrect
-            });
-            
+            selectedOptionIndex = null;
             currentQIndex++;
-
-            if (currentQIndex < questions.length) {
-                renderQuestion();
-            } else {
-                showResults();
-            }
-        }
-
-        // 1. Generate FULL Detailed Report for SCREEN QR (Local JS handles this fine)
-        function generateFullReport() {
-            let text = `ЗВІТ (ДЕТАЛІЗАЦІЯ)\n${userName}\n${new Date().toLocaleString('uk-UA')}\nРез: ${score}/${questions.length}\n\n`;
-            
-            userLog.forEach((log, index) => {
-                const q = questions[log.qIndex];
-                const mark = log.isCorrect ? "✅" : "❌";
-                const qShort = q.q.length > 30 ? q.q.substring(0, 30) + "..." : q.q;
-                const aShort = q.a[log.userAnswerIndex].length > 20 ? q.a[log.userAnswerIndex].substring(0, 20) + "..." : q.a[log.userAnswerIndex];
-                text += `${index + 1}. ${mark} ${qShort} -> ${aShort}\n`;
-            });
-            return text;
-        }
-
-        // 2. Generate COMPACT ERRORS REPORT for EMAIL LINK
-        // This makes the URL much shorter because we remove full text of questions.
-        function generateCompactErrorReport() {
-            let text = `ПІБ: ${userName}\nРез: ${score}/${questions.length}\n`;
-            
-            let errorCount = 0;
-            userLog.forEach((log, index) => {
-                if (!log.isCorrect) {
-                    errorCount++;
-                    // Only Question Index and Short Answer to save space
-                    const aShort = questions[log.qIndex].a[log.userAnswerIndex].substring(0, 15);
-                    text += `\nX Пит.${index + 1}: ${aShort}...`;
-                }
-            });
-
-            if (errorCount === 0) text += "Все вірно!";
-            return text;
-        }
-
-        // Generate Email Body
-        function generateEmailBody(passed, percentage, qrLink) {
-             let bodyText = `ЗВІТ ТЕСТУВАННЯ (FSSC 22000)\n`;
-            bodyText += `Працівник: ${userName}\n`;
-            bodyText += `Дата: ${new Date().toLocaleString('uk-UA')}\n`;
-            bodyText += `Результат: ${score} з 26 (${percentage}%)\n`;
-            bodyText += `Статус: ${passed ? '✅ СКЛАДЕНО (БОНУС)' : '❌ НЕ СКЛАДЕНО'}\n`;
-            bodyText += `--------------------------------\n`;
-            bodyText += `ПОСИЛАННЯ НА ЗВІТ ПОМИЛОК (QR):\n`;
-            bodyText += `${qrLink}\n`;
-            bodyText += `(Повний звіт також доступний на екрані працівника)`;
-            
-            return bodyText;
+            if (currentQIndex < questions.length) renderQuestion(); else showResults();
         }
 
         function showResults() {
-            stepQuiz.classList.add('hidden');
-            stepResult.classList.remove('hidden');
+            document.getElementById('step-quiz').classList.add('hidden');
+            document.getElementById('step-result').classList.remove('hidden');
 
-            const scoreVal = document.getElementById('score-val');
-            const percentageVal = document.getElementById('percentage-val');
-            const iconResult = document.getElementById('icon-result');
-            const titleResult = document.getElementById('title-result');
-            const msgResult = document.getElementById('msg-result');
-            const emailBtn = document.getElementById('email-btn');
-
-            scoreVal.innerText = score;
-            const percentage = Math.round((score / questions.length) * 100);
-            percentageVal.innerText = `${percentage}% успіху`;
-
+            const percent = Math.round((score / questions.length) * 100);
             const passed = score >= 24;
 
-            if (passed) {
-                iconResult.innerText = "🏆";
-                titleResult.innerText = "Вітаємо!";
-                titleResult.className = "text-3xl font-bold mb-2 text-emerald-600";
-                msgResult.innerText = "Ви підтвердили кваліфікацію рівня FSSC 22000! Бонус активовано.";
-            } else {
-                iconResult.innerText = "⚠️";
-                titleResult.innerText = "Тест не складено";
-                titleResult.className = "text-3xl font-bold mb-2 text-orange-600";
-                msgResult.innerText = `Необхідний мінімум: 24 правильні відповіді. У вас ${score}. Повторіть стандарти FSSC 22000.`;
-            }
-
-            // 1. Display FULL QR on screen (Detailed)
-            const fullReport = generateFullReport();
-            const qrcodeContainer = document.getElementById("qrcode");
-            qrcodeContainer.innerHTML = "";
-            try {
-                new QRCode(qrcodeContainer, {
-                    text: fullReport,
-                    width: 200,
-                    height: 200,
-                    colorDark : "#000000",
-                    colorLight : "#ffffff",
-                    correctLevel : QRCode.CorrectLevel.L
-                });
-            } catch(e) {
-                console.error("QR gen error:", e);
-                qrcodeContainer.innerText = "Помилка генерації QR.";
-            }
-
-            // 2. Generate COMPACT LINK for Email (To fit in URL)
-            // Using the compact report function
-            const compactReport = generateCompactErrorReport();
-            const qrApiUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&charset-source=UTF-8&data=${encodeURIComponent(compactReport)}`;
-
-            // 3. Prepare Email Body
-            const emailBody = generateEmailBody(passed, percentage, qrApiUrl);
-
-            // Setup Email Button
-            const recipients = 'Dyndarnastia@gmail.com,Buznitskiy7@gmail.com';
-            const subject = encodeURIComponent(`Результат тесту FSSC 22000: ${userName}`);
+            document.getElementById('score-val').innerText = score;
+            document.getElementById('percentage-val').innerText = `${percent}% Успіху`;
             
-            emailBtn.href = `mailto:${recipients}?subject=${subject}&body=${encodeURIComponent(emailBody)}`;
+            const icon = document.getElementById('icon-result');
+            const title = document.getElementById('title-result');
+            const msg = document.getElementById('msg-result');
+
+            if (passed) {
+                icon.innerText = "🏆"; title.innerText = "СКЛАДЕНО";
+                title.className = "text-3xl font-black mb-1 text-emerald-600";
+                msg.innerText = "Ви підтвердили високий рівень знань стандартів FSSC 22000. Результати внесено до реєстру.";
+            } else {
+                icon.innerText = "⚠️"; title.innerText = "НЕ СКЛАДЕНО";
+                title.className = "text-3xl font-black mb-1 text-red-600";
+                msg.innerText = `Необхідно мінімум 24 бали. У вас ${score}. Будь ласка, перегляньте стандарти якості та спробуйте ще раз.`;
+            }
+
+            const payload = { 
+                formType: 'fssc_test',
+                name: userName, 
+                score, 
+                total: 26, 
+                percent, 
+                passed, 
+                details: testLog.join(' '), 
+                date: new Date().toISOString() 
+            };
+            sendToGAS(payload);
+
+            const qrText = `FSSC:${userName}|${score}/26|${passed?'OK':'FAIL'}|${testLog.join('')}`;
+            const qrContainer = document.getElementById("qrcode");
+            qrContainer.innerHTML = "";
+            
+            try {
+                new QRCode(qrContainer, { 
+                    text: qrText, 
+                    width: 160, 
+                    height: 160,
+                    correctLevel : QRCode.CorrectLevel.L 
+                });
+            } catch (e) {
+                console.error("QR Error:", e);
+                qrContainer.innerText = "Помилка QR";
+            }
+        }
+
+        function sendToGAS(payload) {
+            if (!navigator.onLine) { saveToOffline(payload); return; }
+
+            fetch(GOOGLE_SCRIPT_URL, {
+                method: 'POST',
+                mode: 'no-cors',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            }).then(() => {
+                document.getElementById('sync-indicator').innerHTML = '<span class="text-emerald-500 font-bold uppercase tracking-widest text-[10px]">✅ Збережено в таблиці</span>';
+            }).catch(() => { saveToOffline(payload); });
+        }
+
+        function saveToOffline(payload) {
+            const queue = JSON.parse(localStorage.getItem(OFFLINE_QUEUE_KEY) || '[]');
+            queue.push(payload);
+            localStorage.setItem(OFFLINE_QUEUE_KEY, JSON.stringify(queue));
+            document.getElementById('sync-indicator').innerHTML = '<span class="text-amber-500 font-bold uppercase tracking-widest text-[10px]">📵 Офлайн (В пам\'яті)</span>';
+        }
+
+        async function processOfflineQueue() {
+            if (!navigator.onLine) return;
+            const queue = JSON.parse(localStorage.getItem(OFFLINE_QUEUE_KEY) || '[]');
+            if (queue.length === 0) return;
+
+            for (const payload of [...queue]) {
+                try {
+                    await fetch(GOOGLE_SCRIPT_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify(payload) });
+                    queue.shift();
+                } catch (e) { break; }
+            }
+            localStorage.setItem(OFFLINE_QUEUE_KEY, JSON.stringify(queue));
+            updateNetworkStatus();
+        }
+
+        function updateNetworkStatus() {
+            const dot = document.getElementById('statusDot');
+            const text = document.getElementById('statusText');
+            const queue = JSON.parse(localStorage.getItem(OFFLINE_QUEUE_KEY) || '[]');
+            
+            if (!navigator.onLine) {
+                dot.className = 'w-2 h-2 rounded-full bg-red-500';
+                text.textContent = 'Офлайн';
+            } else {
+                dot.className = 'w-2 h-2 rounded-full bg-green-500';
+                text.textContent = queue.length > 0 ? `Онлайн (Черга: ${queue.length})` : 'Онлайн';
+            }
         }
     </script>
 </body>
